@@ -2,7 +2,7 @@ package dev.andante.dodgebolt.processor;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import dev.andante.dodgebolt.Team;
+import dev.andante.dodgebolt.game.GameTeam;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
@@ -18,27 +18,27 @@ import net.minecraft.world.WorldView;
 public class ArenaStructureProcessor extends StructureProcessor {
     public static final Codec<ArenaStructureProcessor> CODEC = RecordCodecBuilder.create(
         instance -> instance.group(
-            StringIdentifiable.createCodec(Team::values)
+            StringIdentifiable.createCodec(GameTeam::values)
                               .fieldOf("alpha")
                               .forGetter(ArenaStructureProcessor::getAlpha),
-            StringIdentifiable.createCodec(Team::values)
+            StringIdentifiable.createCodec(GameTeam::values)
                               .fieldOf("beta")
                               .forGetter(ArenaStructureProcessor::getBeta)
         ).apply(instance, ArenaStructureProcessor::new)
     );
 
-    private final Team alpha, beta;
+    private final GameTeam alpha, beta;
 
-    public ArenaStructureProcessor(Team alpha, Team beta) {
+    public ArenaStructureProcessor(GameTeam alpha, GameTeam beta) {
         this.alpha = alpha;
         this.beta = beta;
     }
 
-    public Team getAlpha() {
+    public GameTeam getAlpha() {
         return this.alpha;
     }
 
-    public Team getBeta() {
+    public GameTeam getBeta() {
         return this.beta;
     }
 
@@ -69,7 +69,7 @@ public class ArenaStructureProcessor extends StructureProcessor {
         return world == null ? new StructureTemplate() : world.getStructureTemplateManager().getTemplateOrBlank(id);
     }
 
-    public static void placeStructure(ServerWorld world, BlockPos pos, Identifier id, Team alpha, Team beta) {
+    public static void placeStructure(ServerWorld world, BlockPos pos, Identifier id, GameTeam alpha, GameTeam beta) {
         StructureTemplate structure = getStructure(world, id);
         StructurePlacementData data = new StructurePlacementData().addProcessor(new ArenaStructureProcessor(alpha, beta));
         structure.place(world, pos, BlockPos.ORIGIN, data, world.random, Block.NOTIFY_LISTENERS);
