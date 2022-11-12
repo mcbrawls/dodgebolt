@@ -1,11 +1,14 @@
 package dev.andante.dodgebolt.game;
 
 import com.mojang.datafixers.util.Pair;
+import dev.andante.dodgebolt.Dodgebolt;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.StringIdentifiable;
 import net.minecraft.util.math.random.Random;
@@ -59,7 +62,22 @@ public enum GameTeam implements StringIdentifiable {
         throw new IllegalStateException("Team not present");
     }
 
+    public List<ServerPlayerEntity> getPlayers(MinecraftServer server) {
+        return PlayerLookup.all(server)
+                           .stream()
+                           .filter(playerx -> of(playerx.getScoreboardTeam()) == this)
+                           .toList();
+    }
+
+    public List<ServerPlayerEntity> getPlayers() {
+        return this.getPlayers(Dodgebolt.DODGEBOLT_MANAGER.getServer());
+    }
+
     public static GameTeam of(AbstractTeam team) {
+        if (team == null) {
+            return null;
+        }
+
         String id = team.getName();
         return GameTeam.valueOf(id);
     }
@@ -85,7 +103,7 @@ public enum GameTeam implements StringIdentifiable {
     public String asString() {
         return this.name().toLowerCase();
     }
-    
+
     public record BlockData(Block concrete, Block carpet) {
     }
 }

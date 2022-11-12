@@ -1,7 +1,9 @@
-package dev.andante.dodgebolt;
+package dev.andante.dodgebolt.util;
 
+import dev.andante.dodgebolt.Dodgebolt;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.List;
 
@@ -9,8 +11,8 @@ public interface Constants {
     BlockPos SPAWN_POS = new BlockPos(8, 1, 8);
     BlockPos ARENA_SPAWN_POS = new BlockPos(8, 15, 57);
 
-    BlockPos ALPHA_ARROW_SPAWN_POS = new BlockPos(8, 12, 71);
-    BlockPos BETA_ARROW_SPAWN_POS = new BlockPos(8, 12, 83);
+    Vec3d ALPHA_ARROW_SPAWN_POS = new Vec3d(8.5D, 12, 71.5D);
+    Vec3d BETA_ARROW_SPAWN_POS = new Vec3d(8.5D, 12, 83.5D);
 
     int ARENA_MID_Z = 77;
 

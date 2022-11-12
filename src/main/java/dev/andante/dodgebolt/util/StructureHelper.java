@@ -1,6 +1,5 @@
 package dev.andante.dodgebolt.util;
 
-import dev.andante.dodgebolt.Constants;
 import dev.andante.dodgebolt.game.GameTeam;
 import dev.andante.dodgebolt.processor.ArenaStructureProcessor;
 import net.minecraft.block.Block;
