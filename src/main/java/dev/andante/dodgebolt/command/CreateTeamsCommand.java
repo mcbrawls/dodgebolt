@@ -7,6 +7,7 @@ import net.minecraft.scoreboard.AbstractTeam.CollisionRule;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
 
 import java.util.Optional;
 
@@ -17,8 +18,9 @@ public interface CreateTeamsCommand {
         dispatcher.register(literal("createteams").requires(source -> source.hasPermissionLevel(2)).executes(CreateTeamsCommand::execute));
     }
 
-    static int execute(CommandContext<ServerCommandSource> context) {
-        Scoreboard scoreboard = context.getSource().getServer().getScoreboard();
+    private static int execute(CommandContext<ServerCommandSource> context) {
+        ServerCommandSource source = context.getSource();
+        Scoreboard scoreboard = source.getServer().getScoreboard();
 
         for (GameTeam gameTeam : GameTeam.values()) {
             String id = gameTeam.name();
@@ -28,6 +30,7 @@ public interface CreateTeamsCommand {
             team.setColor(gameTeam.getFormattingColor());
         }
 
+        source.sendFeedback(Text.literal("Created and configured teams"), true);
         return 1;
     }
 }

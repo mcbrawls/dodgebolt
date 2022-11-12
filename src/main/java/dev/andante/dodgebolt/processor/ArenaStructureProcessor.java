@@ -4,16 +4,18 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.andante.dodgebolt.game.GameTeam;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePlacementData;
-import net.minecraft.structure.StructureTemplate;
+import net.minecraft.structure.StructureTemplate.StructureBlockInfo;
 import net.minecraft.structure.processor.StructureProcessor;
 import net.minecraft.structure.processor.StructureProcessorType;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.StringIdentifiable;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldView;
+
+import java.util.Map;
+import java.util.function.Function;
 
 public class ArenaStructureProcessor extends StructureProcessor {
     public static final Codec<ArenaStructureProcessor> CODEC = RecordCodecBuilder.create(
@@ -25,6 +27,16 @@ public class ArenaStructureProcessor extends StructureProcessor {
                               .fieldOf("beta")
                               .forGetter(ArenaStructureProcessor::getBeta)
         ).apply(instance, ArenaStructureProcessor::new)
+    );
+
+    public static final Map<Block, Function<GameTeam.BlockData, Block>> ALPHA_REMAPPERS = Map.of(
+            Blocks.RED_CONCRETE, GameTeam.BlockData::concrete,
+            Blocks.RED_CARPET, GameTeam.BlockData::carpet
+    );
+
+    public static final Map<Block, Function<GameTeam.BlockData, Block>> BETA_REMAPPERS = Map.of(
+            Blocks.BLUE_CONCRETE, GameTeam.BlockData::concrete,
+            Blocks.BLUE_CARPET, GameTeam.BlockData::carpet
     );
 
     private final GameTeam alpha, beta;
@@ -43,35 +55,25 @@ public class ArenaStructureProcessor extends StructureProcessor {
     }
 
     @Override
-    public StructureTemplate.StructureBlockInfo process(WorldView world, BlockPos pos, BlockPos pivot, StructureTemplate.StructureBlockInfo originalBlockInfo, StructureTemplate.StructureBlockInfo currentBlockInfo, StructurePlacementData data) {
-        Block block = currentBlockInfo.state.getBlock();
-        Block nu = block;
-
-        if (block == Blocks.RED_CONCRETE) {
-            nu = this.alpha.getConcrete();
-        } else if (block == Blocks.RED_CARPET) {
-            nu = this.alpha.getCarpet();
-        } else if (block == Blocks.BLUE_CONCRETE) {
-            nu = this.beta.getConcrete();
-        } else if (block == Blocks.BLUE_CARPET) {
-            nu = this.beta.getCarpet();
+    public StructureBlockInfo process(WorldView world, BlockPos pos, BlockPos pivot, StructureBlockInfo originalBlockInfo, StructureBlockInfo currentBlockInfo, StructurePlacementData data) {
+        BlockState state = currentBlockInfo.state;
+        Block block = state.getBlock();
+        BlockState nu = state;
+        Function<GameTeam.BlockData, Block> alphaRemapper = ALPHA_REMAPPERS.get(block);
+        if (alphaRemapper == null) {
+            Function<GameTeam.BlockData, Block> betaRemapper = BETA_REMAPPERS.get(block);
+            if (betaRemapper != null) {
+                nu = betaRemapper.apply(this.beta.getBlockData()).getDefaultState();
+            }
+        } else {
+            nu = alphaRemapper.apply(this.alpha.getBlockData()).getDefaultState();
         }
 
-        return nu != block ? new StructureTemplate.StructureBlockInfo(currentBlockInfo.pos, nu.getDefaultState(), currentBlockInfo.nbt) : currentBlockInfo;
+        return new StructureBlockInfo(currentBlockInfo.pos, nu, currentBlockInfo.nbt);
     }
 
     @Override
     protected StructureProcessorType<?> getType() {
         return DodgeboltStructureProcessors.ARENA;
-    }
-
-    public static StructureTemplate getStructure(ServerWorld world, Identifier id) {
-        return world == null ? new StructureTemplate() : world.getStructureTemplateManager().getTemplateOrBlank(id);
-    }
-
-    public static void placeStructure(ServerWorld world, BlockPos pos, Identifier id, GameTeam alpha, GameTeam beta) {
-        StructureTemplate structure = getStructure(world, id);
-        StructurePlacementData data = new StructurePlacementData().addProcessor(new ArenaStructureProcessor(alpha, beta));
-        structure.place(world, pos, BlockPos.ORIGIN, data, world.random, Block.NOTIFY_LISTENERS);
     }
 }

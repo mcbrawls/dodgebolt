@@ -5,7 +5,7 @@ import com.mojang.logging.LogUtils;
 import dev.andante.dodgebolt.command.CreateTeamsCommand;
 import dev.andante.dodgebolt.command.DodgeboltCommand;
 import dev.andante.dodgebolt.command.SpawnArenaCommand;
-import dev.andante.dodgebolt.game.DodgeboltGame;
+import dev.andante.dodgebolt.game.DodgeboltGameManager;
 import dev.andante.dodgebolt.game.GameTeam;
 import dev.andante.dodgebolt.processor.DodgeboltStructureProcessors;
 import net.fabricmc.api.ModInitializer;
@@ -26,12 +26,14 @@ public class Dodgebolt implements ModInitializer {
     public static final String MOD_ID = "dodgebolt";
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    public static final DodgeboltGameManager DODGEBOLT_MANAGER = new DodgeboltGameManager();
+
     @SuppressWarnings("UnstableApiUsage")
     @Override
     public void onInitialize() {
         LOGGER.info("Initializing {}", MOD_ID);
 
-        Reflection.initialize(DodgeboltStructureProcessors.class, DodgeboltGame.class);
+        Reflection.initialize(DodgeboltStructureProcessors.class);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             DodgeboltCommand.register(dispatcher);

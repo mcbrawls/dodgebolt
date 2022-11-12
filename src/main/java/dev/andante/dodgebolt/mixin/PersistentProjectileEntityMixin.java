@@ -1,6 +1,6 @@
 package dev.andante.dodgebolt.mixin;
 
-import dev.andante.dodgebolt.game.DodgeboltGame;
+import dev.andante.dodgebolt.Dodgebolt;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
@@ -19,11 +19,16 @@ public abstract class PersistentProjectileEntityMixin extends ProjectileEntity {
         super(type, world);
     }
 
+    @Inject(method = "setCritical", at = @At("HEAD"), cancellable = true)
+    private void onSetCritical(boolean critical, CallbackInfo ci) {
+        ci.cancel();
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void onTick(CallbackInfo ci) {
         PersistentProjectileEntity that = (PersistentProjectileEntity) (Object) this;
         if (that instanceof ArrowEntity arrowEntity) {
-            DodgeboltGame.INSTANCE.onArrowTick(arrowEntity);
+            Dodgebolt.DODGEBOLT_MANAGER.onArrowTick(arrowEntity);
         }
     }
 
@@ -31,7 +36,7 @@ public abstract class PersistentProjectileEntityMixin extends ProjectileEntity {
     private void onHitBlock(BlockHitResult hit, CallbackInfo ci) {
         PersistentProjectileEntity that = (PersistentProjectileEntity) (Object) this;
         if (that instanceof ArrowEntity arrowEntity) {
-            DodgeboltGame.INSTANCE.onHitBlock(arrowEntity, hit);
+            Dodgebolt.DODGEBOLT_MANAGER.onHitBlock(arrowEntity, hit);
         }
     }
 
@@ -39,7 +44,7 @@ public abstract class PersistentProjectileEntityMixin extends ProjectileEntity {
     private void onHitEntity(EntityHitResult hit, CallbackInfo ci) {
         PersistentProjectileEntity that = (PersistentProjectileEntity) (Object) this;
         if (that instanceof ArrowEntity arrowEntity) {
-            DodgeboltGame.INSTANCE.onHitEntity(arrowEntity, hit);
+            Dodgebolt.DODGEBOLT_MANAGER.onHitEntity(arrowEntity, hit);
             ci.cancel();
         }
     }
