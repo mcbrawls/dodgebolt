@@ -92,9 +92,7 @@ public class DodgeboltGame {
         this.edgeManager = new EdgeManager();
         this.eliminated.clear();
 
-        for (ServerPlayerEntity player : new ArrayList<>(PlayerLookup.all(server))) {
-            this.requestRespawn(player);
-        }
+        this.requestRespawn(server);
 
         for (ServerPlayerEntity player : this.getAlive(server)) {
             player.setHealth(player.getMaxHealth());
@@ -132,10 +130,11 @@ public class DodgeboltGame {
     }
 
     public void terminate(MinecraftServer server) {
+        this.requestRespawn(server);
+
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
             this.stopMusic(player);
             player.getInventory().clear();
-            this.requestRespawn(player);
         }
 
         ServerWorld world = server.getOverworld();
@@ -325,6 +324,10 @@ public class DodgeboltGame {
 
     public void requestRespawn(ServerPlayerEntity player) {
         player.networkHandler.onClientStatus(new ClientStatusC2SPacket(Mode.PERFORM_RESPAWN));
+    }
+
+    public void requestRespawn(MinecraftServer server) {
+        new ArrayList<>(PlayerLookup.all(server)).forEach(this::requestRespawn);
     }
 
     public void onDeath(ServerPlayerEntity player, DamageSource source, float amount) {
