@@ -119,13 +119,15 @@ public class DodgeboltGameManager {
                 float b = ((color) & 0xFF) / 255F;
                 Vec3f to = new Vec3f(r, g, b);
                 Vec3f from = to.copy();
-                from.scale(0.5F);
+                from.scale(1.0F); // nvm
                 ParticleEffect particleEffect = new DustColorTransitionParticleEffect(from, to, 1.0F);
                 world.spawnParticles(particleEffect, entity.getX(), entity.getY(), entity.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             } else {
                 world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, entity.getX(), entity.getY(), entity.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             }
         }
+
+        entity.setGlowing(true);
     }
 
     public void onHitBlock(ArrowEntity entity, BlockHitResult hit) {

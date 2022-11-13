@@ -97,6 +97,7 @@ public class DodgeboltGame {
         }
 
         for (ServerPlayerEntity player : this.getAlive(server)) {
+            player.setHealth(player.getMaxHealth());
             this.setupInventory(player);
         }
 
@@ -252,7 +253,6 @@ public class DodgeboltGame {
     public void onHitBlock(ArrowEntity entity, BlockHitResult hit) {
         if (!entity.getScoreboardTags().contains("item_immune")) {
             ItemEntity itemEntity = new ItemEntity(entity.world, entity.getX(), entity.getY(), entity.getZ(), new ItemStack(Items.ARROW));
-            itemEntity.setGlowing(true);
             itemEntity.setVelocity(0.0D, 0.15D, 0.0D);
             itemEntity.setPickupDelay(5);
             entity.world.spawnEntity(itemEntity);
@@ -283,7 +283,31 @@ public class DodgeboltGame {
     }
 
     public void onArrowItemDestroyed(ItemEntity entity) {
-        this.spawnArrow(entity.world, entity.squaredDistanceTo(ALPHA_ARROW_SPAWN_POS) < entity.squaredDistanceTo(BETA_ARROW_SPAWN_POS) ? ALPHA_ARROW_SPAWN_POS : BETA_ARROW_SPAWN_POS);
+        for (int i = 0, l = entity.getStack().getCount(); i < l; i++) {
+            this.spawnArrow(entity.world, entity.squaredDistanceTo(ALPHA_ARROW_SPAWN_POS) < entity.squaredDistanceTo(BETA_ARROW_SPAWN_POS) ? ALPHA_ARROW_SPAWN_POS : BETA_ARROW_SPAWN_POS);
+        }
+    }
+
+    public void onItemTick(ItemEntity entity) {
+        if (this.stage == RoundStage.IN_GAME) {
+            ItemEntityAccess access = (ItemEntityAccess) entity;
+            if (!entity.world.getBlockState(entity.getBlockPos().down()).isOf(Blocks.ICE)) {
+                access.setTimer(access.getTimer() + 1);
+
+                if (access.getTimer() > 30) {
+                    entity.damage(DamageSource.IN_WALL, Float.MAX_VALUE);
+                }
+            } else {
+                access.setTimer(0);
+            }
+        }
+
+        ItemStack stack = entity.getStack();
+        if (stack.isOf(Items.BOW)) {
+            entity.discard();
+        } else if (stack.isOf(Items.ARROW)) {
+            entity.setGlowing(true);
+        }
     }
 
     public void spawnArrow(World world, Vec3d pos) {
@@ -293,7 +317,6 @@ public class DodgeboltGame {
             entity.setVelocity(new Vec3d(0.0D, 0.3D, 0.0D));
             entity.pickupType = PickupPermission.ALLOWED;
             entity.addScoreboardTag("item_immune");
-            entity.setGlowing(true);
             entity.setYaw(0.0F);
             entity.setPitch(0.0F);
             world.spawnEntity(entity);
@@ -467,25 +490,6 @@ public class DodgeboltGame {
 
     private void stopMusic(ServerPlayerEntity player) {
         player.networkHandler.sendPacket(new StopSoundS2CPacket(null, SoundCategory.VOICE));
-    }
-
-    public void onItemTick(ItemEntity entity) {
-        if (this.stage == RoundStage.IN_GAME) {
-            ItemEntityAccess access = (ItemEntityAccess) entity;
-            if (!entity.world.getBlockState(entity.getBlockPos().down()).isOf(Blocks.ICE)) {
-                access.setTimer(access.getTimer() + 1);
-
-                if (access.getTimer() > 30) {
-                    entity.damage(DamageSource.IN_WALL, Float.MAX_VALUE);
-                }
-            } else {
-                access.setTimer(0);
-            }
-        }
-
-        if (entity.getStack().isOf(Items.BOW)) {
-            entity.discard();
-        }
     }
 
     public enum RoundStage {
