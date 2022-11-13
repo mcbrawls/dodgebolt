@@ -576,7 +576,7 @@ public class DodgeboltGame {
         }
 
         public void add(int rows) {
-            this.desired = Math.min(this.desired + rows, 9);
+            this.desired = Math.min(this.desired + rows, 8);
         }
 
         public void queue() {
