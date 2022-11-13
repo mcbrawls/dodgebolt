@@ -57,7 +57,11 @@ public class DodgeboltGameManager {
         }
 
         if (this.game != null) {
-            this.game.tick(server);
+            try {
+                this.game.tick(server);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
         }
     }
 
