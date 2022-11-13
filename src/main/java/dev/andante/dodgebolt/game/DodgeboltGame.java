@@ -274,8 +274,9 @@ public class DodgeboltGame {
     }
 
     public void onJoin(ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-        if (this.teamAlpha.getPlayers(server).contains(player) || this.teamBeta.getPlayers(server).contains(player)) {
+        if (this.getAliveOf(server, this.teamAlpha).contains(player) || this.getAliveOf(server, this.teamBeta).contains(player)) {
             this.eliminated.add(player);
+            player.kill();
         }
 
         this.requestRespawn(player);
