@@ -1,6 +1,7 @@
 package dev.andante.dodgebolt.game;
 
 import dev.andante.dodgebolt.Dodgebolt;
+import dev.andante.dodgebolt.ItemEntityAccess;
 import dev.andante.dodgebolt.util.StructureHelper;
 import dev.andante.dodgebolt.util.TitleHelper;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -11,8 +12,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.projectile.ArrowEntity;
@@ -61,8 +60,8 @@ import static dev.andante.dodgebolt.util.Constants.BETA_POSITIONS;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 public class DodgeboltGame {
-    private final GameTeam teamAlpha = GameTeam.RED;
-    private final GameTeam teamBeta = GameTeam.BLUE;
+    private final GameTeam teamAlpha;
+    private final GameTeam teamBeta;
 
     private int round;
     private int scoreAlpha, scoreBeta;
@@ -72,7 +71,9 @@ public class DodgeboltGame {
     private EdgeManager edgeManager;
     private final List<ServerPlayerEntity> eliminated;
 
-    public DodgeboltGame() {
+    public DodgeboltGame(GameTeam alpha, GameTeam beta) {
+        this.teamAlpha = alpha;
+        this.teamBeta = beta;
         this.eliminated = new ArrayList<>();
     }
 
@@ -93,6 +94,9 @@ public class DodgeboltGame {
 
         for (ServerPlayerEntity player : new ArrayList<>(PlayerLookup.all(server))) {
             this.requestRespawn(player);
+        }
+
+        for (ServerPlayerEntity player : this.getAlive(server)) {
             this.setupInventory(player);
         }
 
@@ -101,14 +105,29 @@ public class DodgeboltGame {
         StructureHelper.placeArena(world, ARENA_POS, this.teamAlpha, this.teamBeta);
         this.setupBarriers(world, false);
         this.teleportTeamsToSpawn(server, world);
+
+        if (this.round == 1) {
+            List<ServerPlayerEntity> alphaPlayers = this.teamAlpha.getPlayers(server);
+            List<ServerPlayerEntity> betaPlayers = this.teamBeta.getPlayers(server);
+            List<ServerPlayerEntity> players = PlayerLookup.all(server).stream().filter(player -> !alphaPlayers.contains(player) && !betaPlayers.contains(player)).toList();
+            for (ServerPlayerEntity player : players) {
+                player.teleport(world, ARENA_SPAWN_POS.getX(), ARENA_SPAWN_POS.getY(), ARENA_SPAWN_POS.getZ(), 0.0F, 0.0F);
+            }
+        }
     }
 
-    public void setupInventory(ServerPlayerEntity player) {
+    public void setupInventory(ServerPlayerEntity player, boolean clear) {
         PlayerInventory inventory = player.getInventory();
-        inventory.clear();
+        if (clear) {
+            inventory.clear();
+        }
         ItemStack stack = new ItemStack(Items.BOW);
         stack.getOrCreateNbt().putBoolean("Unbreakable", true);
         inventory.setStack(0, stack);
+    }
+
+    public void setupInventory(ServerPlayerEntity player) {
+        this.setupInventory(player, true);
     }
 
     public void terminate(MinecraftServer server) {
@@ -181,28 +200,15 @@ public class DodgeboltGame {
 
                     this.endRound(server);
                 } else {
-                    for (ServerPlayerEntity player : alphaPlayers) {
+                    for (ServerPlayerEntity player : this.getAlive(server)) {
+                        boolean isAlpha = this.teamAlpha.getPlayers(server).contains(player);
                         double z = player.getZ();
-                        if (z >= ARENA_MID_Z) {
-                            if (z >= ARENA_MID_Z + 4) {
-                                player.damage(DamageSource.IN_WALL, 3.0F);
-                            } else {
-                                player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 5, 9, false, false, true));
-                            }
-                        }
-
-                        if (player.isInLava()) {
-                            player.kill();
-                        }
-                    }
-
-                    for (ServerPlayerEntity player : betaPlayers) {
-                        double z = player.getZ();
-                        if (z <= ARENA_MID_Z) {
-                            if (z <= ARENA_MID_Z - 4) {
-                                player.damage(DamageSource.IN_WALL, 3.0F);
-                            } else {
-                                player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 5, 9, false, false, true));
+                        if (isAlpha ? z >= ARENA_MID_Z : z <= ARENA_MID_Z) {
+                            player.damage(DamageSource.IN_WALL, 2.0F);
+                            player.getInventory().remove(stack -> stack.isOf(Items.BOW), -1, player.playerScreenHandler.getCraftingInput());
+                        } else {
+                            if (!player.getInventory().contains(new ItemStack(Items.BOW))) {
+                                this.setupInventory(player, false);
                             }
                         }
 
@@ -296,6 +302,10 @@ public class DodgeboltGame {
     public void onDeath(ServerPlayerEntity player, DamageSource source, float amount) {
         this.eliminated.add(player);
         this.onEliminated(player, source.getAttacker());
+
+        player.setVelocity(Vec3d.ZERO);
+        player.velocityModified = true;
+        player.velocityDirty = true;
     }
 
     protected void onEliminated(ServerPlayerEntity player, @Nullable Entity attacker) {
@@ -324,8 +334,17 @@ public class DodgeboltGame {
                 }
 
                 xplayer.sendMessage(text);
+
+                this.playSound(xplayer, "early_elimination");
             }
         }
+
+        PlayerInventory inventory = player.getInventory();
+        for (int i = 0, l = inventory.remove(stack -> stack.isOf(Items.ARROW), 0, player.playerScreenHandler.getCraftingInput()); i < l; i++) {
+            this.spawnArrow(player.world, this.teamAlpha.getPlayers(server).contains(player) ? BETA_ARROW_SPAWN_POS : ALPHA_ARROW_SPAWN_POS);
+        }
+
+        inventory.clear();
 
         this.edgeManager.queue();
     }
@@ -448,6 +467,21 @@ public class DodgeboltGame {
         player.networkHandler.sendPacket(new StopSoundS2CPacket(null, SoundCategory.VOICE));
     }
 
+    public void onItemTick(ItemEntity entity) {
+        if (this.stage == RoundStage.IN_GAME) {
+            ItemEntityAccess access = (ItemEntityAccess) entity;
+            if (!entity.world.getBlockState(entity.getBlockPos().down()).isOf(Blocks.ICE)) {
+                access.setTimer(access.getTimer() + 1);
+
+                if (access.getTimer() > 30) {
+                    entity.damage(DamageSource.IN_WALL, Float.MAX_VALUE);
+                }
+            } else {
+                access.setTimer(0);
+            }
+        }
+    }
+
     public enum RoundStage {
         PRE,
         IN_GAME,
@@ -469,7 +503,7 @@ public class DodgeboltGame {
         }
 
         public void tick(MinecraftServer server) {
-            if (this.lastDesired > this.stage) {
+            if (this.stage != this.lastDesired) {
                 if (this.tick > DURATION) {
                     ServerWorld world = server.getOverworld();
                     for (BlockPos pos : calculatePerimeter(this.stage, this.lastDesired)) {
@@ -477,7 +511,8 @@ public class DodgeboltGame {
                         world.setBlockState(pos, Blocks.AIR.getDefaultState());
                     }
 
-                    this.stage = this.lastDesired = this.desired;
+                    this.stage = this.lastDesired;
+                    this.lastDesired = this.desired;
                 } else {
                     if (this.tick % FLASH_INTERVAL == 0) {
                         ServerWorld world = server.getOverworld();
@@ -501,7 +536,6 @@ public class DodgeboltGame {
             } else {
                 if (this.lastDesired != this.desired) {
                     this.lastDesired = this.desired;
-                    this.flipMap.clear();
                     this.tick = 0;
 
                     for (ServerPlayerEntity player : PlayerLookup.all(server)) {
@@ -524,7 +558,7 @@ public class DodgeboltGame {
                 BlockPos xpos = entry.getKey();
                 return xpos.getX() == pos.getX() && xpos.getZ() == pos.getZ();
             };
-        };
+        }
 
         public void add(int rows) {
             this.desired = Math.min(this.desired + rows, 9);

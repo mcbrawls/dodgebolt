@@ -86,12 +86,12 @@ public class DodgeboltGameManager {
         }
     }
 
-    public boolean tryStart(MinecraftServer server) {
+    public boolean tryStart(MinecraftServer server, GameTeam alpha, GameTeam beta) {
         if (this.game != null) {
             return false;
         }
 
-        this.game = new DodgeboltGame();
+        this.game = new DodgeboltGame(alpha, beta);
         this.game.initialize(server);
         return true;
     }
@@ -143,6 +143,12 @@ public class DodgeboltGameManager {
     public void onArrowItemDestroyed(ItemEntity entity) {
         if (this.game != null) {
             this.game.onArrowItemDestroyed(entity);
+        }
+    }
+
+    public void onItemTick(ItemEntity entity) {
+        if (this.game != null) {
+            this.game.onItemTick(entity);
         }
     }
 }

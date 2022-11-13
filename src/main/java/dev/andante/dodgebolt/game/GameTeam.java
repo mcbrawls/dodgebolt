@@ -22,7 +22,7 @@ public enum GameTeam implements StringIdentifiable {
     RED(new BlockData(Blocks.RED_CONCRETE, Blocks.RED_CARPET), 0xFC5453, Formatting.RED),
     ORANGE(new BlockData(Blocks.ORANGE_CONCRETE, Blocks.ORANGE_CARPET), 0xFCA800, Formatting.GOLD),
     YELLOW(new BlockData(Blocks.YELLOW_CONCRETE, Blocks.YELLOW_CARPET), 0xFCFC54, Formatting.YELLOW),
-    LIME(new BlockData(Blocks.GREEN_CONCRETE, Blocks.GREEN_CARPET), 0x54FC54, Formatting.GREEN),
+    LIME(new BlockData(Blocks.LIME_CONCRETE, Blocks.LIME_CARPET), 0x54FC54, Formatting.GREEN),
     GREEN(new BlockData(Blocks.GREEN_CONCRETE, Blocks.GREEN_CARPET), 0x00A800, Formatting.DARK_GREEN),
     AQUA(new BlockData(Blocks.LIGHT_BLUE_CONCRETE, Blocks.LIGHT_BLUE_CARPET), 0x54DAFC, Formatting.AQUA),
     CYAN(new BlockData(Blocks.CYAN_CONCRETE, Blocks.CYAN_CARPET), 0x00B997, Formatting.DARK_AQUA),
@@ -79,7 +79,12 @@ public enum GameTeam implements StringIdentifiable {
         }
 
         String id = team.getName();
-        return GameTeam.valueOf(id);
+        try {
+            return GameTeam.valueOf(id);
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        return null;
     }
 
     public static Pair<GameTeam, GameTeam> getRandomPair() {
