@@ -204,6 +204,8 @@ public class DodgeboltGame {
                         boolean isAlpha = this.teamAlpha.getPlayers(server).contains(player);
                         double z = player.getZ();
                         if (isAlpha ? z >= ARENA_MID_Z : z <= ARENA_MID_Z) {
+                            TitleHelper.sendTimes(player, 0, 5, 0);
+                            TitleHelper.sendTitle(player, Text.empty(), Text.literal("<< RETURN TO YOUR HALF >>").formatted(Formatting.RED));
                             player.damage(DamageSource.IN_WALL, 2.0F);
                             player.getInventory().remove(stack -> stack.isOf(Items.BOW), -1, player.playerScreenHandler.getCraftingInput());
                         } else {
