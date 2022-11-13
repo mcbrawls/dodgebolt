@@ -123,7 +123,7 @@ public class DodgeboltGame {
         }
         ItemStack stack = new ItemStack(Items.BOW);
         stack.getOrCreateNbt().putBoolean("Unbreakable", true);
-        inventory.setStack(0, stack);
+        player.giveItemStack(stack);
     }
 
     public void setupInventory(ServerPlayerEntity player) {
