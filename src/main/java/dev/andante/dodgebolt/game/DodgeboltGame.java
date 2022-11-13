@@ -478,6 +478,10 @@ public class DodgeboltGame {
                 access.setTimer(0);
             }
         }
+
+        if (entity.getStack().isOf(Items.BOW)) {
+            entity.discard();
+        }
     }
 
     public enum RoundStage {
