@@ -134,6 +134,7 @@ public class DodgeboltGame {
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
             this.stopMusic(player);
             player.getInventory().clear();
+            this.requestRespawn(player);
         }
 
         ServerWorld world = server.getOverworld();
