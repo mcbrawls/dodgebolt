@@ -341,10 +341,7 @@ public class DodgeboltGame {
         }
 
         PlayerInventory inventory = player.getInventory();
-        for (int i = 0, l = inventory.remove(stack -> stack.isOf(Items.ARROW), 0, player.playerScreenHandler.getCraftingInput()); i < l; i++) {
-            this.spawnArrow(player.world, this.teamAlpha.getPlayers(server).contains(player) ? BETA_ARROW_SPAWN_POS : ALPHA_ARROW_SPAWN_POS);
-        }
-
+        player.dropStack(new ItemStack(Items.ARROW, inventory.remove(stack -> stack.isOf(Items.ARROW), 0, player.playerScreenHandler.getCraftingInput())));
         inventory.clear();
 
         this.edgeManager.queue();
