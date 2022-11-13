@@ -264,6 +264,7 @@ public class DodgeboltGame {
                 if (owner.getScoreboardTeam() != player.getScoreboardTeam()) {
                     player.damage(DamageSource.arrow(entity, owner), Float.MAX_VALUE);
                     owner.addExperience(1);
+                    entity.discard();
                 }
             }
         }
