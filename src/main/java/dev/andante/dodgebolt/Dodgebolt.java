@@ -4,6 +4,7 @@ import com.google.common.reflect.Reflection;
 import com.mojang.logging.LogUtils;
 import dev.andante.dodgebolt.command.CreateTeamsCommand;
 import dev.andante.dodgebolt.command.DodgeboltCommand;
+import dev.andante.dodgebolt.command.RandomiseTeamsCommand;
 import dev.andante.dodgebolt.command.SpawnArenaCommand;
 import dev.andante.dodgebolt.game.DodgeboltGameManager;
 import dev.andante.dodgebolt.game.GameTeam;
@@ -39,6 +40,7 @@ public class Dodgebolt implements ModInitializer {
             DodgeboltCommand.register(dispatcher);
             SpawnArenaCommand.register(dispatcher);
             CreateTeamsCommand.register(dispatcher);
+            RandomiseTeamsCommand.register(dispatcher);
         });
 
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(this::allowChatMessage);
