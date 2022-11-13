@@ -441,6 +441,7 @@ public class DodgeboltGame {
 
                 this.stopMusic(player);
                 this.playSound(player, "game_end");
+                this.playSound(player, "team_eliminated");
                 this.playSound(player, "dodgebolt");
             }
         }
