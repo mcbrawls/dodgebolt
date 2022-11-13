@@ -13,6 +13,7 @@ import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity.PickupPermission;
@@ -28,22 +29,31 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.TypeFilter;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import static dev.andante.dodgebolt.util.Constants.ALPHA_ARROW_SPAWN_POS;
 import static dev.andante.dodgebolt.util.Constants.ALPHA_POSITIONS;
+import static dev.andante.dodgebolt.util.Constants.ARENA_MAX;
 import static dev.andante.dodgebolt.util.Constants.ARENA_MID_Z;
+import static dev.andante.dodgebolt.util.Constants.ARENA_MIN;
 import static dev.andante.dodgebolt.util.Constants.ARENA_POS;
 import static dev.andante.dodgebolt.util.Constants.ARENA_SPAWN_POS;
 import static dev.andante.dodgebolt.util.Constants.BETA_ARROW_SPAWN_POS;
@@ -54,16 +64,15 @@ public class DodgeboltGame {
     private final GameTeam teamAlpha = GameTeam.RED;
     private final GameTeam teamBeta = GameTeam.BLUE;
 
-    private final int max;
-
     private int round;
+    private int scoreAlpha, scoreBeta;
 
     private RoundStage stage;
     private int tick;
+    private EdgeManager edgeManager;
     private final List<ServerPlayerEntity> eliminated;
 
-    public DodgeboltGame(int max) {
-        this.max = max;
+    public DodgeboltGame() {
         this.eliminated = new ArrayList<>();
     }
 
@@ -79,6 +88,7 @@ public class DodgeboltGame {
         this.round++;
         this.stage = RoundStage.PRE;
         this.tick = 0;
+        this.edgeManager = new EdgeManager();
         this.eliminated.clear();
 
         for (ServerPlayerEntity player : new ArrayList<>(PlayerLookup.all(server))) {
@@ -121,7 +131,13 @@ public class DodgeboltGame {
         int second = tick / TICKS_PER_SECOND;
 
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
-            player.sendMessage(Text.literal(this.stage.name() + " " + this.round + " " + tick + " " + second), true);
+            // player.sendMessage(Text.literal(this.stage.name() + " " + this.round + " " + tick + " " + second), true);
+            player.sendMessage(
+                    Text.empty()
+                        .append(Text.literal("" + this.scoreAlpha).setStyle(Dodgebolt.getTeamStyle(this.teamAlpha)))
+                        .append(" | ")
+                        .append(Text.literal("" + this.scoreBeta).setStyle(Dodgebolt.getTeamStyle(this.teamBeta))), true
+            );
         }
 
         switch (this.stage) {
@@ -136,10 +152,11 @@ public class DodgeboltGame {
                             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                                 TitleHelper.sendTimes(player, 0, 30, 0);
                                 TitleHelper.sendTitle(player, Text.literal("Starting in").formatted(Formatting.AQUA),
-                                                      Text.literal("")
-                                                          .append(Text.literal("▶"))
-                                                          .append(Text.literal("" + countdown).formatted(Formatting.BOLD))
-                                                          .append(Text.literal("◀"))
+                                                      Text.literal("▶" + countdown + "◀").formatted(Formatting.BOLD, countdown == 3
+                                                              ? Formatting.RED : countdown == 2
+                                                              ? Formatting.YELLOW : countdown == 1
+                                                              ? Formatting.GREEN : Formatting.WHITE
+                                                      )
                                 );
 
                                 if (countdown <= 3) {
@@ -156,20 +173,52 @@ public class DodgeboltGame {
                 List<ServerPlayerEntity> betaPlayers = this.getAliveOf(server, this.teamBeta);
 
                 if (alphaPlayers.isEmpty() || betaPlayers.isEmpty()) {
+                    if (alphaPlayers.size() > betaPlayers.size()) {
+                        this.scoreAlpha++;
+                    } else {
+                        this.scoreBeta++;
+                    }
+
                     this.endRound(server);
                 } else {
                     for (ServerPlayerEntity player : alphaPlayers) {
-                        if (player.getZ() >= ARENA_MID_Z) {
-                            player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 2, 9, false, false, true));
+                        double z = player.getZ();
+                        if (z >= ARENA_MID_Z) {
+                            if (z >= ARENA_MID_Z + 4) {
+                                player.damage(DamageSource.IN_WALL, 3.0F);
+                            } else {
+                                player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 5, 9, false, false, true));
+                            }
+                        }
+
+                        if (player.isInLava()) {
+                            player.kill();
                         }
                     }
 
                     for (ServerPlayerEntity player : betaPlayers) {
-                        if (player.getZ() <= ARENA_MID_Z) {
-                            player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 2, 9, false, false, true));
+                        double z = player.getZ();
+                        if (z <= ARENA_MID_Z) {
+                            if (z <= ARENA_MID_Z - 4) {
+                                player.damage(DamageSource.IN_WALL, 3.0F);
+                            } else {
+                                player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 5, 9, false, false, true));
+                            }
+                        }
+
+                        if (player.isInLava()) {
+                            player.kill();
                         }
                     }
                 }
+
+                if (tick % TICKS_PER_SECOND == 0) {
+                    if (second != 0 && second % 20 == 0) {
+                        this.edgeManager.queue();
+                    }
+                }
+
+                this.edgeManager.tick(server);
             }
 
             case POST -> {
@@ -177,6 +226,8 @@ public class DodgeboltGame {
                 if (second >= max) {
                     this.triggerRound(server);
                 }
+
+                this.edgeManager.tick(server);
             }
 
             case END -> {
@@ -187,6 +238,29 @@ public class DodgeboltGame {
         }
 
         this.tick++;
+    }
+
+    public void onHitBlock(ArrowEntity entity, BlockHitResult hit) {
+        if (!entity.getScoreboardTags().contains("item_immune")) {
+            ItemEntity itemEntity = new ItemEntity(entity.world, entity.getX(), entity.getY(), entity.getZ(), new ItemStack(Items.ARROW));
+            itemEntity.setGlowing(true);
+            itemEntity.setVelocity(0.0D, 0.15D, 0.0D);
+            itemEntity.setPickupDelay(5);
+            entity.world.spawnEntity(itemEntity);
+
+            entity.discard();
+        }
+    }
+
+    public void onHitEntity(ArrowEntity entity, EntityHitResult hit) {
+        if (hit.getEntity() instanceof ServerPlayerEntity player) {
+            if (entity.getOwner() instanceof PlayerEntity owner) {
+                if (owner.getScoreboardTeam() != player.getScoreboardTeam()) {
+                    player.damage(DamageSource.arrow(entity, owner), Float.MAX_VALUE);
+                    owner.addExperience(1);
+                }
+            }
+        }
     }
 
     public void onJoin(ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
@@ -208,6 +282,9 @@ public class DodgeboltGame {
             entity.setVelocity(new Vec3d(0.0D, 0.3D, 0.0D));
             entity.pickupType = PickupPermission.ALLOWED;
             entity.addScoreboardTag("item_immune");
+            entity.setGlowing(true);
+            entity.setYaw(0.0F);
+            entity.setPitch(0.0F);
             world.spawnEntity(entity);
         }
     }
@@ -218,10 +295,10 @@ public class DodgeboltGame {
 
     public void onDeath(ServerPlayerEntity player, DamageSource source, float amount) {
         this.eliminated.add(player);
-        this.onEliminated(player);
+        this.onEliminated(player, source.getAttacker());
     }
 
-    protected void onEliminated(ServerPlayerEntity player) {
+    protected void onEliminated(ServerPlayerEntity player, @Nullable Entity attacker) {
         MinecraftServer server = player.getServer();
         if (server != null) {
             int alphaPlayers = this.getAliveOf(server, this.teamAlpha).size();
@@ -232,7 +309,25 @@ public class DodgeboltGame {
                     this.playSoundFast(xplayer, "dodgebolt_loop");
                 }
             }
+
+            ServerPlayerEntity attackerPlayer = Optional.ofNullable(attacker)
+                                                        .filter(ServerPlayerEntity.class::isInstance)
+                                                        .map(ServerPlayerEntity.class::cast)
+                                                        .orElse(null);
+
+            for (ServerPlayerEntity xplayer : PlayerLookup.all(server)) {
+                MutableText text = Text.empty().formatted(Formatting.GRAY).append(Text.literal("[☠] ").formatted(Formatting.RED)).append(Dodgebolt.getDisplayName(player));
+                if (attackerPlayer != null) {
+                    text.append(" was shot by ").append(Dodgebolt.getDisplayName(attackerPlayer));
+                } else {
+                    text.append(" died");
+                }
+
+                xplayer.sendMessage(text);
+            }
         }
+
+        this.edgeManager.queue();
     }
 
     public void onRespawn(ServerPlayerEntity oldPlayer, ServerPlayerEntity player, boolean alive) {
@@ -248,11 +343,11 @@ public class DodgeboltGame {
         return team.getPlayers(server).stream().filter(Predicate.not(this.eliminated::contains)).toList();
     }
 
-    /*public List<ServerPlayerEntity> getAlive(MinecraftServer server) {
+    public List<ServerPlayerEntity> getAlive(MinecraftServer server) {
         List<ServerPlayerEntity> list = new ArrayList<>(this.getAliveOf(server, this.teamAlpha));
         list.addAll(this.getAliveOf(server, this.teamBeta));
         return list;
-    }*/
+    }
 
     /**
      * Called on every round start.
@@ -283,11 +378,19 @@ public class DodgeboltGame {
     private void endRound(MinecraftServer server) {
         this.tick = 0;
 
-        if (this.round == this.max) {
+        if (this.scoreAlpha >= 3 || this.scoreBeta >= 3) {
             this.stage = RoundStage.END;
+            GameTeam winner = this.scoreAlpha > this.scoreBeta ? this.teamAlpha : this.teamBeta;
+            for (ServerPlayerEntity player : PlayerLookup.all(server)) {
+                TitleHelper.sendTimes(player, 0, 40, 0);
+                TitleHelper.sendTitle(player, Text.literal("GAME OVER").formatted(Formatting.BOLD, Formatting.RED), Text.literal(winner.name() + " WIN!").setStyle(Dodgebolt.getTeamStyle(winner)));
+
+                this.stopMusic(player);
+                this.playSoundFast(player, "game_end");
+                this.playSoundFast(player, "advance");
+            }
         } else {
             this.stage = RoundStage.POST;
-
             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                 TitleHelper.sendTimes(player, 0, 40, 0);
                 TitleHelper.sendTitle(player, Text.literal("ROUND OVER").formatted(Formatting.BOLD, Formatting.RED), Text.empty());
@@ -350,5 +453,120 @@ public class DodgeboltGame {
         IN_GAME,
         POST,
         END
+    }
+
+    public class EdgeManager {
+        public static final int DURATION = 3 * 20;
+        public static final int FLASH_INTERVAL = DURATION / 10;
+
+        private final Map<BlockPos, BlockState> flipMap;
+
+        private int tick, lastDesired;
+        private int desired, stage;
+
+        public EdgeManager() {
+            this.flipMap = new HashMap<>();
+        }
+
+        public void tick(MinecraftServer server) {
+            if (this.lastDesired > this.stage) {
+                if (this.tick > DURATION) {
+                    ServerWorld world = server.getOverworld();
+                    for (BlockPos pos : calculatePerimeter(this.stage, this.lastDesired)) {
+                        world.setBlockState(pos.withY(11), Blocks.AIR.getDefaultState());
+                        world.setBlockState(pos, Blocks.AIR.getDefaultState());
+                    }
+
+                    this.stage = this.lastDesired = this.desired;
+                } else {
+                    if (this.tick % FLASH_INTERVAL == 0) {
+                        ServerWorld world = server.getOverworld();
+                        for (BlockPos pos : calculatePerimeter(this.stage, this.lastDesired)) {
+                            BlockState state = this.getStateFromMap(pos);
+                            BlockPos carpetPos = pos.withY(11);
+                            if (state == null) {
+                                this.flipMap.put(pos, world.getBlockState(carpetPos));
+                                world.setBlockState(pos, Blocks.LAPIS_ORE.getDefaultState());
+                                world.setBlockState(carpetPos, Blocks.AIR.getDefaultState());
+                            } else {
+                                world.setBlockState(carpetPos, state);
+                                world.setBlockState(pos, Blocks.ICE.getDefaultState());
+                                this.removeFlipMapPos(pos);
+                            }
+                        }
+                    }
+
+                    this.tick++;
+                }
+            } else {
+                if (this.lastDesired != this.desired) {
+                    this.lastDesired = this.desired;
+                    this.flipMap.clear();
+                    this.tick = 0;
+
+                    for (ServerPlayerEntity player : PlayerLookup.all(server)) {
+                        DodgeboltGame.this.playSound(player, "platform_decay");
+                    }
+                }
+            }
+        }
+
+        public BlockState getStateFromMap(BlockPos pos) {
+            return this.flipMap.entrySet().stream().filter(createPredicate(pos)).map(Map.Entry::getValue).findAny().orElse(null);
+        }
+
+        public void removeFlipMapPos(BlockPos pos) {
+            this.flipMap.entrySet().removeIf(createPredicate(pos));
+        }
+
+        public Predicate<Map.Entry<BlockPos, BlockState>> createPredicate(BlockPos pos) {
+            return entry -> {
+                BlockPos xpos = entry.getKey();
+                return xpos.getX() == pos.getX() && xpos.getZ() == pos.getZ();
+            };
+        };
+
+        public void add(int rows) {
+            this.desired = Math.min(this.desired + rows, 9);
+        }
+
+        public void queue() {
+            this.add(this.desired == 0 ? 2 : 1);
+        }
+
+        public List<BlockPos> calculatePerimeter(int minx, int minz, int maxx, int maxz) {
+            List<BlockPos> list = new ArrayList<>();
+            for (int i = minx; i <= maxx; i++) {
+                this.add(list, i, minz);
+                this.add(list, i, maxz);
+            }
+            for (int i = minz; i <= maxz; i++) {
+                this.add(list, minx, i);
+                this.add(list, maxx, i);
+            }
+
+            return list;
+        }
+
+        public List<BlockPos> calculatePerimeter(int minx, int minz, int maxx, int maxz, int indent, int width) {
+            List<BlockPos> list = new ArrayList<>();
+            for (int i = indent; i < width; i++) {
+                List<BlockPos> ilist = calculatePerimeter(minx + i, minz + i, maxx - i, maxz - i);
+                for (BlockPos pos : ilist) {
+                    this.add(list, pos.getX(), pos.getZ());
+                }
+            }
+            return list;
+        }
+
+        public List<BlockPos> calculatePerimeter(int indent, int width) {
+            return calculatePerimeter(ARENA_MIN.getX(), ARENA_MIN.getZ(), ARENA_MAX.getX(), ARENA_MAX.getZ(), indent, width);
+        }
+
+        public void add(List<BlockPos> list, int x, int z) {
+            if (list.stream().noneMatch(posx -> posx.getX() == x && posx.getZ() == z)) {
+                list.add(new BlockPos(x, 10, z));
+            }
+        }
     }
 }

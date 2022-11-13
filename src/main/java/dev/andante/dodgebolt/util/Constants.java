@@ -32,4 +32,7 @@ public interface Constants {
 
     BlockPos ARENA_POS = new BlockPos(-7, 0, 60);
     Identifier ARENA_STRUCTURE_ID = new Identifier(Dodgebolt.MOD_ID, "arena");
+
+    BlockPos ARENA_MIN = new BlockPos(-6, 10, 61);
+    BlockPos ARENA_MAX = new BlockPos(22, 10, 93);
 }

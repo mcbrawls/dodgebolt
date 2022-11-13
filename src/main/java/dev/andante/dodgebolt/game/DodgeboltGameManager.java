@@ -13,7 +13,6 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.HungerManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
-import net.minecraft.item.Items;
 import net.minecraft.particle.DustColorTransitionParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
@@ -24,6 +23,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3f;
+import net.minecraft.world.GameMode;
 import org.jetbrains.annotations.Nullable;
 
 import static dev.andante.dodgebolt.util.Constants.SPAWN_POS;
@@ -46,7 +46,14 @@ public class DodgeboltGameManager {
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
             HungerManager hungerManager = player.getHungerManager();
             hungerManager.setFoodLevel(20);
+
+            player.setFireTicks(0);
+            player.setOnFire(false);
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.HUNGER, Integer.MAX_VALUE, 0, false, false));
+
+            if (this.game == null && player.isAlive()) {
+                player.setHealth(player.getMaxHealth());
+            }
         }
 
         if (this.game != null) {
@@ -60,6 +67,8 @@ public class DodgeboltGameManager {
             this.game.onJoin(player, handler, sender, server);
         } else {
             player.teleport(server.getOverworld(), SPAWN_POS.getX(), SPAWN_POS.getY(), SPAWN_POS.getZ(), 0.0F, 0.0F);
+            player.getInventory().clear();
+            player.changeGameMode(GameMode.ADVENTURE);
         }
     }
 
@@ -82,7 +91,7 @@ public class DodgeboltGameManager {
             return false;
         }
 
-        this.game = new DodgeboltGame(3);
+        this.game = new DodgeboltGame();
         this.game.initialize(server);
         return true;
     }
@@ -121,23 +130,13 @@ public class DodgeboltGameManager {
 
     public void onHitBlock(ArrowEntity entity, BlockHitResult hit) {
         if (this.game != null) {
-            if (!entity.getScoreboardTags().contains("item_immune")) {
-                entity.dropItem(Items.ARROW);
-                entity.discard();
-            }
+            this.game.onHitBlock(entity, hit);
         }
     }
 
     public void onHitEntity(ArrowEntity entity, EntityHitResult hit) {
         if (this.game != null) {
-            if (hit.getEntity() instanceof ServerPlayerEntity player) {
-                if (entity.getOwner() instanceof PlayerEntity owner) {
-                    if (owner.getScoreboardTeam() != player.getScoreboardTeam()) {
-                        player.kill();
-                        owner.addExperience(1);
-                    }
-                }
-            }
+            this.game.onHitEntity(entity, hit);
         }
     }
 

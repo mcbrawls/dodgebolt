@@ -14,12 +14,12 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.network.message.MessageType;
 import net.minecraft.network.message.SignedMessage;
-import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 
 public class Dodgebolt implements ModInitializer {
@@ -47,23 +47,24 @@ public class Dodgebolt implements ModInitializer {
     public boolean allowChatMessage(SignedMessage message, ServerPlayerEntity player, MessageType.Parameters parameters) {
         MinecraftServer server = player.getServer();
         if (server != null) {
-            AbstractTeam team = player.getScoreboardTeam();
-            if (team != null) {
-                String teamId = team.getName();
-                try {
-                    GameTeam gameTeam = GameTeam.valueOf(teamId);
-
-                    MutableText name = player.getDisplayName().copy().setStyle(Style.EMPTY.withColor(gameTeam.getColor()));
-                    for (ServerPlayerEntity xplayer : PlayerLookup.all(server)) {
-                        xplayer.sendMessage(Text.translatable("%s: %s", name, message.getContent()));
-                    }
-
-                    return false;
-                } catch (IllegalArgumentException ignored) {
-                }
+            MutableText name = getDisplayName(player);
+            for (ServerPlayerEntity xplayer : PlayerLookup.all(server)) {
+                xplayer.sendMessage(Text.translatable("%s: %s", name, message.getContent()));
             }
+
+            return false;
         }
 
         return true;
+    }
+
+    public static MutableText getDisplayName(ServerPlayerEntity player) {
+        GameTeam gameTeam = GameTeam.of(player.getScoreboardTeam());
+        return player.getDisplayName().copy().setStyle(getTeamStyle(gameTeam));
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public static Style getTeamStyle(GameTeam team) {
+        return Style.EMPTY.withColor(team != null ? team.getColor() : Formatting.GRAY.getColorValue());
     }
 }
