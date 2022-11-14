@@ -274,12 +274,12 @@ public class DodgeboltGame {
     }
 
     public void onJoin(ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-        if (this.getAliveOf(server, this.teamAlpha).contains(player) || this.getAliveOf(server, this.teamBeta).contains(player)) {
-            this.eliminated.add(player);
-            player.kill();
+        GameTeam team = GameTeam.of(player.getScoreboardTeam());
+        if (team == this.teamAlpha || team == this.teamBeta) {
+            if (this.eliminated.stream().noneMatch(xplayer -> player.getEntityName().equals(xplayer.getEntityName()))) {
+                player.kill();
+            }
         }
-
-        this.requestRespawn(player);
     }
 
     public void onArrowItemDestroyed(ItemEntity entity) {
