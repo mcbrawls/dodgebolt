@@ -49,9 +49,12 @@ public class Dodgebolt implements ModInitializer {
     public boolean allowChatMessage(SignedMessage message, ServerPlayerEntity player, MessageType.Parameters parameters) {
         MinecraftServer server = player.getServer();
         if (server != null) {
-            MutableText name = getDisplayName(player);
+            Text name = getDisplayName(player);
+            Text text = Text.translatable("%s: %s", name, message.getContent());
+            LOGGER.info("[CHAT] {}", text.getString());
+
             for (ServerPlayerEntity xplayer : PlayerLookup.all(server)) {
-                xplayer.sendMessage(Text.translatable("%s: %s", name, message.getContent()));
+                xplayer.sendMessage(text);
             }
 
             return false;
