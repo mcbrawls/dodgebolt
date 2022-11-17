@@ -40,6 +40,7 @@ public class DodgeboltGameManager {
         ServerPlayerEvents.ALLOW_DEATH.register(this::onDeath);
         ServerPlayerEvents.AFTER_RESPAWN.register(this::onRespawn);
         ServerPlayConnectionEvents.JOIN.register(this::onJoin);
+        ServerPlayConnectionEvents.DISCONNECT.register(this::onDisconnect);
     }
 
     protected void tick(MinecraftServer server) {
@@ -73,6 +74,12 @@ public class DodgeboltGameManager {
             player.teleport(server.getOverworld(), SPAWN_POS.getX(), SPAWN_POS.getY(), SPAWN_POS.getZ(), 0.0F, 0.0F);
             player.getInventory().clear();
             player.changeGameMode(GameMode.ADVENTURE);
+        }
+    }
+
+    protected void onDisconnect(ServerPlayNetworkHandler handler, MinecraftServer server) {
+        if (this.game != null) {
+            this.game.onDisconnect(handler, server);
         }
     }
 

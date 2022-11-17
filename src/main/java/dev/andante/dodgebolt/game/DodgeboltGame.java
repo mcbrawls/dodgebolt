@@ -271,10 +271,15 @@ public class DodgeboltGame {
     }
 
     public void onJoin(ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
+    }
+
+    public void onDisconnect(ServerPlayNetworkHandler handler, MinecraftServer server) {
+        ServerPlayerEntity player = handler.player;
         GameTeam team = GameTeam.of(player.getScoreboardTeam());
         if (team == this.teamAlpha || team == this.teamBeta) {
             if (this.eliminated.stream().noneMatch(xplayer -> player.getEntityName().equals(xplayer.getEntityName()))) {
-                player.kill();
+                player.teleport(player.getWorld(), ARENA_SPAWN_POS.getX(), ARENA_SPAWN_POS.getY(), ARENA_SPAWN_POS.getZ(), 0.0F, 0.0F);
+                this.onEliminated(player, player.getPrimeAdversary());
             }
         }
     }
