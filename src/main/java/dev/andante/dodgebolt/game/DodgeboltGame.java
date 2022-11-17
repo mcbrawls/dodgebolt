@@ -203,7 +203,8 @@ public class DodgeboltGame {
                         if (isAlpha ? z >= ARENA_MID_Z : z <= ARENA_MID_Z) {
                             TitleHelper.sendTimes(player, 0, 5, 0);
                             TitleHelper.sendTitle(player, Text.empty(), Text.literal("<< RETURN TO YOUR HALF >>").formatted(Formatting.BOLD, Formatting.RED));
-                            player.damage(DamageSource.IN_WALL, 2.0F);
+                            float diff = (float) (isAlpha ? z - ARENA_MID_Z : ARENA_MID_Z - z);
+                            player.damage(DamageSource.IN_WALL, (diff * diff) / 2.5F);
                             player.getInventory().remove(stack -> stack.isOf(Items.BOW), -1, player.playerScreenHandler.getCraftingInput());
                         } else {
                             if (!player.getInventory().contains(new ItemStack(Items.BOW))) {
