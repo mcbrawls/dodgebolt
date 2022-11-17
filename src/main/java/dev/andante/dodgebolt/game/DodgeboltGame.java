@@ -1,5 +1,6 @@
 package dev.andante.dodgebolt.game;
 
+import com.mojang.logging.LogUtils;
 import dev.andante.dodgebolt.Dodgebolt;
 import dev.andante.dodgebolt.ItemEntityAccess;
 import dev.andante.dodgebolt.util.StructureHelper;
@@ -24,7 +25,6 @@ import net.minecraft.network.packet.s2c.play.ClearTitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlaySoundIdS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
 import net.minecraft.scoreboard.ServerScoreboard;
-import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -39,18 +39,16 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import static dev.andante.dodgebolt.util.Constants.ALPHA_ARROW_SPAWN_POS;
 import static dev.andante.dodgebolt.util.Constants.ALPHA_POSITIONS;
@@ -64,6 +62,8 @@ import static dev.andante.dodgebolt.util.Constants.BETA_POSITIONS;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 public class DodgeboltGame {
+    protected static final Logger LOGGER = LogUtils.getLogger();
+
     private final GameTeam teamAlpha;
     private final GameTeam teamBeta;
 
@@ -82,37 +82,26 @@ public class DodgeboltGame {
     }
 
     public void initialize(MinecraftServer server) {
+        LOGGER.info("Initializing Dodgebolt Game");
+
         this.triggerRound(server);
 
-        List<String> alphaPlayers = new ArrayList<>();
-        List<String> betaPlayers = new ArrayList<>();
-
-        for (ServerPlayerEntity player : PlayerLookup.all(server)) {
-            player.changeGameMode(GameMode.ADVENTURE);
-
-            GameTeam team = GameTeam.of(player.getScoreboardTeam());
-            if (team == this.teamAlpha) {
-                alphaPlayers.add(player.getEntityName());
-            } else if (team == this.teamBeta) {
-                betaPlayers.add(player.getEntityName());
-            }
-        }
-
         ServerScoreboard scoreboard = server.getScoreboard();
-        if (scoreboard != null) {
-            Team alphaTeam = this.teamAlpha.getTeam(server);
-            Team betaTeam = this.teamBeta.getTeam(server);
-            Stream.of(alphaTeam, betaTeam).forEach(team -> new ArrayList<>(team.getPlayerList()).forEach(s -> scoreboard.removePlayerFromTeam(s, team)));
-            Map.of(alphaPlayers, alphaTeam, betaPlayers, betaTeam).forEach((players, team) -> players.forEach(s -> scoreboard.addPlayerToTeam(s, team)));
+        for (GameTeam team : List.of(this.teamAlpha, this.teamBeta)) {
+            for (String player : team.getOfflinePlayers(server)) {
+                scoreboard.removePlayerFromTeam(player, team.getTeam(server));
+            }
         }
     }
 
     public void triggerRound(MinecraftServer server) {
         this.round++;
-        this.stage = RoundStage.PRE;
+        this.changeState(RoundStage.PRE);
         this.tick = 0;
         this.edgeManager = new EdgeManager();
         this.eliminated.clear();
+
+        LOGGER.info("Starting round {}", this.round);
 
         this.requestRespawn(server);
 
@@ -135,6 +124,8 @@ public class DodgeboltGame {
                 player.teleport(world, ARENA_SPAWN_POS.getX(), ARENA_SPAWN_POS.getY(), ARENA_SPAWN_POS.getZ(), 0.0F, 0.0F);
             }
         }
+
+        LOGGER.info("Started round {} with {} eliminated by default", this.round, this.eliminated.size());
     }
 
     public void setupInventory(ServerPlayerEntity player, boolean clear) {
@@ -148,6 +139,8 @@ public class DodgeboltGame {
     }
 
     public void terminate(MinecraftServer server) {
+        LOGGER.info("Terminating game at round {}", this.round);
+
         this.requestRespawn(server);
 
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
@@ -293,6 +286,13 @@ public class DodgeboltGame {
     }
 
     public void onJoin(ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
+        GameTeam team = GameTeam.of(player.getScoreboardTeam());
+        if (team == this.teamAlpha || team == this.teamBeta) {
+            if (this.eliminated.stream().noneMatch(xplayer -> player.getEntityName().equals(xplayer.getEntityName()))) {
+                this.eliminated.add(player);
+                player.teleport(player.getWorld(), ARENA_SPAWN_POS.getX(), ARENA_SPAWN_POS.getY(), ARENA_SPAWN_POS.getZ(), 0.0F, 0.0F);
+            }
+        }
     }
 
     public void onDisconnect(ServerPlayNetworkHandler handler, MinecraftServer server) {
@@ -381,16 +381,17 @@ public class DodgeboltGame {
                                                         .map(ServerPlayerEntity.class::cast)
                                                         .orElse(null);
 
+            MutableText text = Text.empty().formatted(Formatting.GRAY).append(Text.literal("[☠] ").formatted(Formatting.RED)).append(Dodgebolt.getDisplayName(player));
+            if (attackerPlayer != null) {
+                text.append(" was shot by ").append(Dodgebolt.getDisplayName(attackerPlayer));
+            } else {
+                text.append(" died");
+            }
+
+            LOGGER.info(text.getString());
+
             for (ServerPlayerEntity xplayer : PlayerLookup.all(server)) {
-                MutableText text = Text.empty().formatted(Formatting.GRAY).append(Text.literal("[☠] ").formatted(Formatting.RED)).append(Dodgebolt.getDisplayName(player));
-                if (attackerPlayer != null) {
-                    text.append(" was shot by ").append(Dodgebolt.getDisplayName(attackerPlayer));
-                } else {
-                    text.append(" died");
-                }
-
                 xplayer.sendMessage(text);
-
                 this.playSound(xplayer, "early_elimination");
             }
         }
@@ -425,7 +426,7 @@ public class DodgeboltGame {
      * Called on every round start.
      */
     private void startRound(MinecraftServer server) {
-        this.stage = RoundStage.IN_GAME;
+        this.changeState(RoundStage.IN_GAME);
         this.tick = 0;
 
         ServerWorld world = server.getOverworld();
@@ -444,6 +445,11 @@ public class DodgeboltGame {
         }
     }
 
+    public void changeState(RoundStage stage) {
+        LOGGER.info("STATE CHANGE: {} -> {}", this.stage, stage);
+        this.stage = stage;
+    }
+
     /**
      * Called on every round end.
      */
@@ -451,7 +457,7 @@ public class DodgeboltGame {
         this.tick = 0;
 
         if (this.scoreAlpha >= 3 || this.scoreBeta >= 3) {
-            this.stage = RoundStage.END;
+            this.changeState(RoundStage.END);
             GameTeam winner = this.scoreAlpha > this.scoreBeta ? this.teamAlpha : this.teamBeta;
             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                 TitleHelper.sendTimes(player, 0, 40, 0);
@@ -462,7 +468,7 @@ public class DodgeboltGame {
                 this.playSoundFast(player, "advance");
             }
         } else {
-            this.stage = RoundStage.POST;
+            this.changeState(RoundStage.POST);
             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                 TitleHelper.sendTimes(player, 0, 40, 0);
                 TitleHelper.sendTitle(player, Text.literal("ROUND OVER").formatted(Formatting.BOLD, Formatting.RED), Text.empty());
