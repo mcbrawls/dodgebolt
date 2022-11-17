@@ -7,6 +7,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.scoreboard.ServerScoreboard;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Formatting;
@@ -52,9 +53,9 @@ public enum GameTeam implements StringIdentifiable {
         return this.formatting;
     }
 
-    public AbstractTeam getTeam(MinecraftServer server) {
+    public Team getTeam(MinecraftServer server) {
         ServerScoreboard scoreboard = server.getScoreboard();
-        AbstractTeam team = scoreboard.getTeam(this.name());
+        Team team = scoreboard.getTeam(this.name());
         if (team != null) {
             return team;
         }

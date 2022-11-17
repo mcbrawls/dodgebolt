@@ -23,6 +23,8 @@ import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket.Mode;
 import net.minecraft.network.packet.s2c.play.ClearTitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlaySoundIdS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
+import net.minecraft.scoreboard.ServerScoreboard;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -42,11 +44,13 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static dev.andante.dodgebolt.util.Constants.ALPHA_ARROW_SPAWN_POS;
 import static dev.andante.dodgebolt.util.Constants.ALPHA_POSITIONS;
@@ -80,8 +84,26 @@ public class DodgeboltGame {
     public void initialize(MinecraftServer server) {
         this.triggerRound(server);
 
+        List<String> alphaPlayers = new ArrayList<>();
+        List<String> betaPlayers = new ArrayList<>();
+
         for (ServerPlayerEntity player : PlayerLookup.all(server)) {
             player.changeGameMode(GameMode.ADVENTURE);
+
+            GameTeam team = GameTeam.of(player.getScoreboardTeam());
+            if (team == this.teamAlpha) {
+                alphaPlayers.add(player.getEntityName());
+            } else if (team == this.teamBeta) {
+                betaPlayers.add(player.getEntityName());
+            }
+        }
+
+        ServerScoreboard scoreboard = server.getScoreboard();
+        if (scoreboard != null) {
+            Team alphaTeam = this.teamAlpha.getTeam(server);
+            Team betaTeam = this.teamBeta.getTeam(server);
+            Stream.of(alphaTeam, betaTeam).forEach(team -> new ArrayList<>(team.getPlayerList()).forEach(s -> scoreboard.removePlayerFromTeam(s, team)));
+            Map.of(alphaPlayers, alphaTeam, betaPlayers, betaTeam).forEach((players, team) -> players.forEach(s -> scoreboard.addPlayerToTeam(s, team)));
         }
     }
 
