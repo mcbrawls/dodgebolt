@@ -21,7 +21,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 public interface RandomiseTeamsCommand {
     static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         LiteralArgumentBuilder<ServerCommandSource> builder = literal("randomiseteams").requires(source -> source.hasPermissionLevel(2)).executes(RandomiseTeamsCommand::execute);
-        GameTeam.forEachPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, alpha, beta)))));
+        GameTeam.forEachTeamPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, alpha, beta)))));
         dispatcher.register(builder);
     }
 
@@ -34,7 +34,10 @@ public interface RandomiseTeamsCommand {
         MinecraftServer server = context.getSource().getServer();
         ServerScoreboard scoreboard = server.getScoreboard();
 
-        List<ServerPlayerEntity> players = new ArrayList<>(PlayerLookup.all(server));
+        List<ServerPlayerEntity> players = new ArrayList<>(PlayerLookup.all(server)
+                                                                       .stream()
+                                                                       .filter(player -> GameTeam.of(player.getScoreboardTeam()) != null)
+                                                                       .toList());
         Collections.shuffle(players);
 
         int size = players.size();

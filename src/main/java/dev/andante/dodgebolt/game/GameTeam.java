@@ -14,10 +14,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.StringIdentifiable;
 import net.minecraft.util.math.random.Random;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -31,7 +31,9 @@ public enum GameTeam implements StringIdentifiable {
     CYAN(new BlockData(Blocks.CYAN_CONCRETE, Blocks.CYAN_CARPET), 0x00B997, Formatting.DARK_AQUA),
     BLUE(new BlockData(Blocks.BLUE_CONCRETE, Blocks.BLUE_CARPET), 0x5486FC, Formatting.BLUE),
     PURPLE(new BlockData(Blocks.PURPLE_CONCRETE, Blocks.PURPLE_CARPET), 0x8632FC, Formatting.DARK_PURPLE),
-    PINK(new BlockData(Blocks.PINK_CONCRETE, Blocks.PINK_CARPET), 0xFC54FC, Formatting.LIGHT_PURPLE);
+    PINK(new BlockData(Blocks.PINK_CONCRETE, Blocks.PINK_CARPET), 0xFC54FC, Formatting.LIGHT_PURPLE),
+    SPECTATOR(null, 0xA7A7A7, Formatting.GRAY),
+    ADMIN(null, 0xE63B3B, Formatting.DARK_RED);
 
     private final BlockData blockData;
     private final int color;
@@ -85,7 +87,14 @@ public enum GameTeam implements StringIdentifiable {
         return this.getPlayers(Dodgebolt.DODGEBOLT_MANAGER.getServer());
     }
 
+    @Nullable
     public static GameTeam of(AbstractTeam team) {
+        GameTeam gameTeam = ofAny(team);
+        return gameTeam == null || gameTeam.blockData == null ? null : gameTeam;
+    }
+
+    @Nullable
+    public static GameTeam ofAny(AbstractTeam team) {
         if (team == null) {
             return null;
         }
@@ -100,20 +109,24 @@ public enum GameTeam implements StringIdentifiable {
     }
 
     public static Pair<GameTeam, GameTeam> getRandomPair() {
-        List<GameTeam> teams = new ArrayList<>(Arrays.asList(values()));
+        List<GameTeam> teams = new ArrayList<>(Arrays.asList(teamValues()));
         Random random = Random.create();
         GameTeam first = teams.get(random.nextInt(teams.size()));
         teams.remove(first);
         return Pair.of(first, teams.get(random.nextInt(teams.size())));
     }
 
-    public static void forEachPair(BiConsumer<GameTeam, GameTeam> action) {
-        GameTeam[] values = values();
+    public static void forEachTeamPair(BiConsumer<GameTeam, GameTeam> action) {
+        GameTeam[] values = teamValues();
         for (GameTeam first : values) {
             for (GameTeam second : values) {
                 action.accept(first, second);
             }
         }
+    }
+
+    public static GameTeam[] teamValues() {
+        return Arrays.stream(values()).filter(team -> team.blockData != null).toArray(GameTeam[]::new);
     }
 
     @Override

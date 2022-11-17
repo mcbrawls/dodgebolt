@@ -96,7 +96,7 @@ public class DodgeboltGame {
 
     public void triggerRound(MinecraftServer server) {
         this.round++;
-        this.changeState(RoundStage.PRE);
+        this.changeState(server, RoundStage.PRE);
         this.tick = 0;
         this.edgeManager = new EdgeManager();
         this.eliminated.clear();
@@ -426,7 +426,7 @@ public class DodgeboltGame {
      * Called on every round start.
      */
     private void startRound(MinecraftServer server) {
-        this.changeState(RoundStage.IN_GAME);
+        this.changeState(server, RoundStage.IN_GAME);
         this.tick = 0;
 
         ServerWorld world = server.getOverworld();
@@ -445,8 +445,12 @@ public class DodgeboltGame {
         }
     }
 
-    public void changeState(RoundStage stage) {
+    public void changeState(MinecraftServer server, RoundStage stage) {
         LOGGER.info("STATE CHANGE: {} -> {}", this.stage, stage);
+        Text text = Text.empty().append(Text.literal("STATE CHANGE: ").formatted(Formatting.GOLD)).append(Text.literal("%s -> %s".formatted(this.stage, stage)).formatted(Formatting.GRAY));
+        PlayerLookup.all(server).stream()
+                    .filter(player -> GameTeam.ofAny(player.getScoreboardTeam()) == GameTeam.ADMIN)
+                    .forEach(player -> player.sendMessage(text));
         this.stage = stage;
     }
 
@@ -454,11 +458,13 @@ public class DodgeboltGame {
      * Called on every round end.
      */
     private void endRound(MinecraftServer server) {
+        GameTeam winner = this.scoreAlpha > this.scoreBeta ? this.teamAlpha : this.teamBeta;
         this.tick = 0;
 
+        LOGGER.info("Ending round {} with winner {}: {}-{}", this.round, winner, this.scoreAlpha, this.scoreBeta);
+
         if (this.scoreAlpha >= 3 || this.scoreBeta >= 3) {
-            this.changeState(RoundStage.END);
-            GameTeam winner = this.scoreAlpha > this.scoreBeta ? this.teamAlpha : this.teamBeta;
+            this.changeState(server, RoundStage.END);
             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                 TitleHelper.sendTimes(player, 0, 40, 0);
                 TitleHelper.sendTitle(player, Text.literal("GAME OVER").formatted(Formatting.BOLD, Formatting.RED), Text.literal(winner.name() + " WIN!").setStyle(Dodgebolt.getTeamStyle(winner)));
@@ -468,7 +474,7 @@ public class DodgeboltGame {
                 this.playSoundFast(player, "advance");
             }
         } else {
-            this.changeState(RoundStage.POST);
+            this.changeState(server, RoundStage.POST);
             for (ServerPlayerEntity player : PlayerLookup.all(server)) {
                 TitleHelper.sendTimes(player, 0, 40, 0);
                 TitleHelper.sendTitle(player, Text.literal("ROUND OVER").formatted(Formatting.BOLD, Formatting.RED), Text.empty());

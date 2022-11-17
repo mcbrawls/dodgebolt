@@ -2,7 +2,6 @@ package dev.andante.dodgebolt;
 
 import com.google.common.reflect.Reflection;
 import com.mojang.logging.LogUtils;
-import dev.andante.dodgebolt.command.CreateTeamsCommand;
 import dev.andante.dodgebolt.command.DodgeboltCommand;
 import dev.andante.dodgebolt.command.RandomiseTeamsCommand;
 import dev.andante.dodgebolt.command.SpawnArenaCommand;
@@ -39,7 +38,6 @@ public class Dodgebolt implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             DodgeboltCommand.register(dispatcher);
             SpawnArenaCommand.register(dispatcher);
-            CreateTeamsCommand.register(dispatcher);
             RandomiseTeamsCommand.register(dispatcher);
         });
 
@@ -64,7 +62,7 @@ public class Dodgebolt implements ModInitializer {
     }
 
     public static MutableText getDisplayName(ServerPlayerEntity player) {
-        GameTeam gameTeam = GameTeam.of(player.getScoreboardTeam());
+        GameTeam gameTeam = GameTeam.ofAny(player.getScoreboardTeam());
         return player.getDisplayName().copy().setStyle(getTeamStyle(gameTeam));
     }
 

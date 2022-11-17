@@ -16,6 +16,9 @@ import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.particle.DustColorTransitionParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.scoreboard.AbstractTeam;
+import net.minecraft.scoreboard.Scoreboard;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -25,6 +28,8 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3f;
 import net.minecraft.world.GameMode;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 import static dev.andante.dodgebolt.util.Constants.SPAWN_POS;
 
@@ -36,6 +41,16 @@ public class DodgeboltGameManager {
 
     public DodgeboltGameManager() {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> this.server = server);
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            Scoreboard scoreboard = server.getScoreboard();
+            for (GameTeam gameTeam : GameTeam.values()) {
+                String id = gameTeam.name();
+                Team team = Optional.ofNullable(scoreboard.getTeam(id)).orElseGet(() -> scoreboard.addTeam(id));
+                team.setCollisionRule(AbstractTeam.CollisionRule.NEVER);
+                team.setFriendlyFireAllowed(false);
+                team.setColor(gameTeam.getFormattingColor());
+            }
+        });
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
         ServerPlayerEvents.ALLOW_DEATH.register(this::onDeath);
         ServerPlayerEvents.AFTER_RESPAWN.register(this::onRespawn);
@@ -54,6 +69,11 @@ public class DodgeboltGameManager {
 
             if (this.game == null && player.isAlive()) {
                 player.setHealth(player.getMaxHealth());
+            }
+
+            AbstractTeam team = player.getScoreboardTeam();
+            if (team == null) {
+                server.getScoreboard().addPlayerToTeam(player.getEntityName(), (player.hasPermissionLevel(2) ? GameTeam.ADMIN : GameTeam.SPECTATOR).getTeam(server));
             }
         }
 

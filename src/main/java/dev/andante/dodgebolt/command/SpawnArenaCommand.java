@@ -14,7 +14,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 public interface SpawnArenaCommand {
     static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         LiteralArgumentBuilder<ServerCommandSource> builder = literal("spawnarena").requires(source -> source.hasPermissionLevel(2)).executes(context -> execute(context, GameTeam.getRandomPair()));
-        GameTeam.forEachPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, Pair.of(alpha, beta))))));
+        GameTeam.forEachTeamPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, Pair.of(alpha, beta))))));
         dispatcher.register(builder);
     }
 

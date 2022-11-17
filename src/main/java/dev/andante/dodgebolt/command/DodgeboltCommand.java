@@ -15,7 +15,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 public interface DodgeboltCommand {
     static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         LiteralArgumentBuilder<ServerCommandSource> builder = literal("dodgebolt").requires(source -> source.hasPermissionLevel(2)).executes(context -> execute(context, GameTeam.RED, GameTeam.BLUE)).then(literal("end").executes(DodgeboltCommand::executeEnd));
-        GameTeam.forEachPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, alpha, beta)))));
+        GameTeam.forEachTeamPair((alpha, beta) -> builder.then(literal(alpha.name()).then(literal(beta.name()).executes(context -> execute(context, alpha, beta)))));
         dispatcher.register(builder);
     }
 
