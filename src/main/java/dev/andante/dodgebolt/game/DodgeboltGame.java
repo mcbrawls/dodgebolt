@@ -96,7 +96,7 @@ public class DodgeboltGame {
 
         for (ServerPlayerEntity player : this.getAlive(server)) {
             player.setHealth(player.getMaxHealth());
-            this.setupInventory(player);
+            this.setupInventory(player, true);
         }
 
         ServerWorld world = server.getOverworld();
@@ -123,10 +123,6 @@ public class DodgeboltGame {
         ItemStack stack = new ItemStack(Items.BOW);
         stack.getOrCreateNbt().putBoolean("Unbreakable", true);
         player.giveItemStack(stack);
-    }
-
-    public void setupInventory(ServerPlayerEntity player) {
-        this.setupInventory(player, true);
     }
 
     public void terminate(MinecraftServer server) {
@@ -384,7 +380,7 @@ public class DodgeboltGame {
             player.teleport(server.getOverworld(), ARENA_SPAWN_POS.getX(), ARENA_SPAWN_POS.getY(), ARENA_SPAWN_POS.getZ(), 0.0F, 0.0F);
         }
 
-        this.setupInventory(player);
+        this.setupInventory(player, true);
     }
 
     public List<ServerPlayerEntity> getAliveOf(MinecraftServer server, GameTeam team) {
