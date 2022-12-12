@@ -22,14 +22,16 @@ import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket.Mode;
 import net.minecraft.network.packet.s2c.play.ClearTitleS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlaySoundIdS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -521,12 +523,16 @@ public class DodgeboltGame {
         }
     }
 
+    private void playSound(ServerPlayerEntity player, String id, float pitch) {
+        player.networkHandler.sendPacket(new PlaySoundS2CPacket(RegistryEntry.of(SoundEvent.of(new Identifier(Dodgebolt.MOD_ID, id))), SoundCategory.VOICE, 0.0D, 0.0D, 0.0D, 1.0F, pitch, 0L));
+    }
+
     private void playSound(ServerPlayerEntity player, String id) {
-        player.networkHandler.sendPacket(new PlaySoundIdS2CPacket(new Identifier(Dodgebolt.MOD_ID, id), SoundCategory.VOICE, Vec3d.ZERO, 1.0F, 1.0F, 0L));
+        this.playSound(player, id, 1.0F);
     }
 
     private void playSoundFast(ServerPlayerEntity player, String id) {
-        player.networkHandler.sendPacket(new PlaySoundIdS2CPacket(new Identifier(Dodgebolt.MOD_ID, id), SoundCategory.VOICE, Vec3d.ZERO, 1.0F, 1.2F, 0L));
+        this.playSound(player, id, 1.2F);
     }
 
     private void stopMusic(ServerPlayerEntity player) {

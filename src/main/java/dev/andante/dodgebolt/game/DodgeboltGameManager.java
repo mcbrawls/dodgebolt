@@ -1,5 +1,6 @@
 package dev.andante.dodgebolt.game;
 
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -7,6 +8,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -14,6 +16,7 @@ import net.minecraft.entity.player.HungerManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.particle.DustColorTransitionParticleEffect;
+import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.scoreboard.AbstractTeam;
@@ -25,9 +28,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.math.Vec3f;
 import net.minecraft.world.GameMode;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import java.util.Optional;
 
@@ -52,7 +55,7 @@ public class DodgeboltGameManager {
             }
         });
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
-        ServerPlayerEvents.ALLOW_DEATH.register(this::onDeath);
+        ServerLivingEntityEvents.ALLOW_DEATH.register(this::onDeath);
         ServerPlayerEvents.AFTER_RESPAWN.register(this::onRespawn);
         ServerPlayConnectionEvents.JOIN.register(this::onJoin);
         ServerPlayConnectionEvents.DISCONNECT.register(this::onDisconnect);
@@ -103,8 +106,8 @@ public class DodgeboltGameManager {
         }
     }
 
-    protected boolean onDeath(ServerPlayerEntity player, DamageSource source, float amount) {
-        if (this.game != null) {
+    protected boolean onDeath(LivingEntity entity, DamageSource source, float amount) {
+        if (this.game != null && entity instanceof ServerPlayerEntity player) {
             this.game.onDeath(player, source, amount);
         }
 
@@ -148,10 +151,7 @@ public class DodgeboltGameManager {
                 float r = ((color >> 16) & 0xFF) / 255F;
                 float g = ((color >> 8) & 0xFF) / 255F;
                 float b = ((color) & 0xFF) / 255F;
-                Vec3f to = new Vec3f(r, g, b);
-                Vec3f from = to.copy();
-                from.scale(1.0F); // nvm
-                ParticleEffect particleEffect = new DustColorTransitionParticleEffect(from, to, 1.0F);
+                ParticleEffect particleEffect = new DustParticleEffect(new Vector3f(r, g, b), 1.0F);
                 world.spawnParticles(particleEffect, entity.getX(), entity.getY(), entity.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             } else {
                 world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, entity.getX(), entity.getY(), entity.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
