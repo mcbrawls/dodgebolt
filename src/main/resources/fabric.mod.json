@@ -10,21 +10,17 @@
   "icon": "assets/dodgebolt/icon.png",
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "dev.andante.dodgebolt.client.DodgeboltClient"
-    ],
     "main": [
       "dev.andante.dodgebolt.Dodgebolt"
     ]
   },
 
-          "mixins": [
-        "dodgebolt.mixins.json"
-      ],
+  "mixins": [
+    "dodgebolt.mixins.json"
+  ],
 
   "depends": {
     "fabricloader": ">=0.14.10",
-              "fabric": "*",
-          "minecraft": "1.19.2"
+    "fabric": "*"
   }
 }
