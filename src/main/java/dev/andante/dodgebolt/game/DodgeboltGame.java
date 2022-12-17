@@ -249,8 +249,6 @@ public class DodgeboltGame {
                 if (second >= max) {
                     this.triggerRound(server);
                 }
-
-                this.edgeManager.tick(server);
             }
 
             case END -> {
