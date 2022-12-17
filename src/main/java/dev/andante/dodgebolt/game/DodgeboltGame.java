@@ -7,6 +7,7 @@ import dev.andante.dodgebolt.util.StructureHelper;
 import dev.andante.dodgebolt.util.TitleHelper;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.tag.convention.v1.ConventionalItemTags;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
@@ -224,7 +225,7 @@ public class DodgeboltGame {
                             player.damage(DamageSource.IN_WALL, (diff * diff) / 2.5F);
                             player.getInventory().remove(stack -> stack.isOf(Items.BOW), -1, player.playerScreenHandler.getCraftingInput());
                         } else {
-                            if (!player.getInventory().contains(new ItemStack(Items.BOW))) {
+                            if (!player.getInventory().contains(ConventionalItemTags.BOWS)) {
                                 this.setupInventory(player, false);
                             }
                         }
